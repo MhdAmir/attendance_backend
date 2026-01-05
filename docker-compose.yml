@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: eros_attendance_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - eros_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eros_attendance_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      
+      # PASETO
+      PASETO_SECRET_KEY: ${PASETO_SECRET_KEY}
+      PASETO_ACCESS_TOKEN_EXPIRATION: ${PASETO_ACCESS_TOKEN_EXPIRATION}
+      PASETO_REFRESH_TOKEN_EXPIRATION: ${PASETO_REFRESH_TOKEN_EXPIRATION}
+      
+      # OTP
+      OTP_SECRET_HEX: ${OTP_SECRET_HEX}
+      OTP_TIME_STEP_SECONDS: ${OTP_TIME_STEP_SECONDS}
+      
+      # Google Sheets
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID}
+      GOOGLE_SHEETS_CREDENTIALS_PATH: /app/config/google-credentials.json
+      
+      # Server
+      SERVER_PORT: ${SERVER_PORT}
+    volumes:
+      # Mount google credentials from host
+      - ./google-credentials.json:/app/config/google-credentials.json:ro
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    networks:
+      - eros_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SERVER_PORT}/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  eros_network:
+    driver: bridge
+
