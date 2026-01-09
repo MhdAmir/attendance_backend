@@ -20,8 +20,12 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck and tzdata for timezone
+RUN apk add --no-cache curl tzdata
+
+# Set timezone to Jakarta, Indonesia (WIB/UTC+7)
+ENV TZ=Asia/Jakarta
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Copy jar from build stage
 COPY --from=build /app/target/*.jar app.jar
