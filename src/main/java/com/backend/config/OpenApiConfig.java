@@ -20,7 +20,9 @@ import org.springframework.context.annotation.Configuration;
         )
     ),
     servers = {
-        @Server(url = "http://localhost:8080", description = "Local Development Server")
+        @Server(url = "http://localhost:8080", description = "Local Development Server"),
+        @Server(url = "http://129.226.159.225:8080", description = "VPS Production Server"),
+        @Server(url = "/", description = "Current Server (Dynamic)")
     }
 )
 @SecurityScheme(
