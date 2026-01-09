@@ -190,10 +190,10 @@ public class AuthController {
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         Cookie cookie = new Cookie("refreshToken", refreshToken);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Set to true when using HTTPS in production
+        cookie.setSecure(true); // Set HTTPS in production
         cookie.setPath("/");
         cookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
-        cookie.setAttribute("SameSite", "Lax"); // Lax for HTTP, None requires HTTPS
+        cookie.setAttribute("SameSite", "None"); // requires HTTPS
         response.addCookie(cookie);
     }
     
