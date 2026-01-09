@@ -193,7 +193,7 @@ public class AuthController {
         cookie.setSecure(false); // Set to true when using HTTPS in production
         cookie.setPath("/");
         cookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
-        cookie.setAttribute("SameSite", "None"); // Allow cross-site requests
+        cookie.setAttribute("SameSite", "Lax"); // Lax for HTTP, None requires HTTPS
         response.addCookie(cookie);
     }
     
