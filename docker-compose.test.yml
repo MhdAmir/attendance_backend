@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database - Testing
+  db-test:
+    image: postgres:16-alpine
+    container_name: eros_attendance_db_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-testuser}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-testpass}
+      POSTGRES_DB: ${TEST_POSTGRES_DB:-eros_attendance_test}
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks:
+      - eros_test_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-testuser} -d ${TEST_POSTGRES_DB:-eros_attendance_test}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Backend - Testing
+  backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eros_attendance_backend_test
+    restart: unless-stopped
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-test:5432/${TEST_POSTGRES_DB:-eros_attendance_test}
+      SPRING_DATASOURCE_USERNAME: ${TEST_POSTGRES_USER:-testuser}
+      SPRING_DATASOURCE_PASSWORD: ${TEST_POSTGRES_PASSWORD:-testpass}
+      
+      # PASETO
+      PASETO_SECRET_KEY: ${PASETO_SECRET_KEY}
+      PASETO_ACCESS_TOKEN_EXPIRATION: ${PASETO_ACCESS_TOKEN_EXPIRATION:-3600000}
+      PASETO_REFRESH_TOKEN_EXPIRATION: ${PASETO_REFRESH_TOKEN_EXPIRATION:-86400000}
+      
+      # OTP
+      OTP_SECRET_HEX: ${OTP_SECRET_HEX}
+      OTP_TIME_STEP_SECONDS: ${OTP_TIME_STEP_SECONDS:-30}
+      
+      # Google Sheets
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID}
+      GOOGLE_SHEETS_CREDENTIALS_PATH: /app/config/google-credentials.json
+      
+      # Server
+      SERVER_PORT: ${TEST_SERVER_PORT:-8081}
+    volumes:
+      # Mount google credentials from host
+      - ./google-credentials.json:/app/config/google-credentials.json:ro
+    ports:
+      - "${TEST_SERVER_PORT:-8081}:${TEST_SERVER_PORT:-8081}"
+    networks:
+      - eros_test_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${TEST_SERVER_PORT:-8081}/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_test_data:
+    driver: local
+
+networks:
+  eros_test_network:
+    driver: bridge
